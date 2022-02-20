@@ -1,3 +1,6 @@
+flyway.conf
+web/.env
+
 # Logs
 logs
 *.log
