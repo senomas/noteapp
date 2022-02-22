@@ -33,25 +33,28 @@ async function login({email, password}) {
   }
 }
 
-async function createNote(title, content) {
-  const {data, error} = await supabase.from('notes').insert({title, content});
+async function saveNote(title, content) {
+  const {data, error} = await supabase
+    .from('notes')
+    .upsert({title, content}, {onConflict: 'owner_id, title'});
   if (error) {
-    throw error;
+    throw {saveNote: {error, req: {title, content}, data}};
   }
-  console.log({data});
+  console.log(JSON.stringify({upsert: {data}}, undefined, 2));
   return data[0].id;
 }
 
-async function updateNote(id, title, content) {
-  const {data, error} = await supabase
-    .from('notes')
-    .update({title, content})
-    .eq('id', id);
+async function selectNotes(users) {
+  const {data, error} = await supabase.from('notes').select('*');
   if (error) {
     throw error;
   }
-  console.log({data});
-  return data;
+  return data.map(v => ({
+    ...v,
+    created_by: (users.filter(u => u.id === v.created_by)[0] || {}).email,
+    updated_by: (users.filter(u => u.id === v.updated_by)[0] || {}).email,
+    owner_id: (users.filter(u => u.id === v.owner_id)[0] || {}).email
+  }));
 }
 
 (async () => {
@@ -59,17 +62,62 @@ async function updateNote(id, title, content) {
     email: 'admin@noteapp.com',
     password: 'dodol123'
   });
-  const nid = await createNote('note 1', 'this is very long note 1');
-  await updateNote(nid, 'note 1 update', 'this is very long note 1 update');
+  let {data, error} = await supabase.from('user_views').select('*');
+  if (error) {
+    throw error;
+  }
+  const users = data;
+
+  await saveNote('note 1', [{t: 0, c: 'line 1'}]);
+  await saveNote('note 1', [
+    {t: 0, c: 'line 1'},
+    {t: 0, c: 'line 2'},
+    {t: 1, c: 'line 2.1'},
+    {t: 1, c: 'line 2.2'}
+  ]);
+  console.log(
+    '\n\n\nADMIN >>>>>>> ' +
+      JSON.stringify(await selectNotes(users), undefined, 2)
+  );
 
   await login({
     email: 'admin2@noteapp.com',
     password: 'dodol123'
   });
-  const nid2 = await createNote('note 2', 'this is very long note 2');
-  await updateNote(nid2, 'note 2 update', 'this is very long note 2 update');
+  await saveNote('note 1', [
+    {t: 0, c: 'line 1'},
+    {t: 0, c: 'line 2'},
+    {t: 1, c: 'line 2.1'},
+    {t: 1, c: 'line 2.2'}
+  ]);
+  await saveNote('note 2', [
+    {t: 0, c: 'note 2 line 1'},
+    {t: 0, c: 'note 2 line 2'},
+    {t: 1, c: 'note 2 line 2.1'},
+    {t: 1, c: 'note 2 line 2.2'}
+  ]);
+  console.log(
+    '\n\n\nADMIN2 >>>>>>> ' +
+      JSON.stringify(await selectNotes(users), undefined, 2)
+  );
 
-  await updateNote(nid, 'note 1 failed', 'this is very long note 1 failed');
+  await login({
+    email: 'admin@noteapp.com',
+    password: 'dodol123'
+  });
+  console.log(
+    '\n\n\nADMIN >>>>>>> ' +
+      JSON.stringify(await selectNotes(users), undefined, 2)
+  );
+
+  await login({
+    email: 'super_admin@noteapp.com',
+    password: 'dodol123'
+  });
+  console.log(
+    '\n\n\nSUPER_ADMIN >>>>>>> ' +
+      JSON.stringify(await selectNotes(users), undefined, 2)
+  );
 })()
   .then(() => console.log('DONE init-note'))
   .catch(err => {

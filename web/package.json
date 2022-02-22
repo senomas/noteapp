@@ -13,9 +13,11 @@
     "supabase": "cd ../supabase && docker-compose up -d",
     "supabase-stop": "cd ../supabase && docker-compose down -v",
     "flyway": "docker run --rm --network=noteapp_default -v `pwd`/../sql:/flyway/sql -v `pwd`/../flyway.conf:/flyway/conf/flyway.conf flyway/flyway",
-    "predev": "npm run supabase && node init-user.js && npm run flyway migrate",
+    "predev": "npm run supabase && npm run init-data",
+    "init-data": "npm run flyway -- -target=2 migrate && node init-user.js && npm run flyway migrate",
     "postdev": "npm run supabase-stop",
-    "test": "npm run predev && node init-note.js"
+    "reset-flyway": "docker exec -u postgres supabase-db psql postgres -f /sql/reset-flyway.sql || true",
+    "test": "npm run reset-flyway && npm run init-data && node init-note.js"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^1.30.3",
