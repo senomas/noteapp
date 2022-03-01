@@ -1,11 +1,7 @@
 module.exports = {
-  darkMode: "class",
-  plugins: [],
-  theme: {
-    extend: {},
-  },
-  content: ["./index.html", "./src/**/*.{svelte,js,ts}"],
-  variants: {
-    extend: {},
-  },
+	content: ['./src/**/*.{html,js,svelte,ts}'],
+	theme: {
+		extend: {}
+	},
+	plugins: []
 };
